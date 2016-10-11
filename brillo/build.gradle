@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId "com.google.samples.iotweatherstation"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 24
         versionCode 1
         versionName "1.0"
@@ -51,7 +51,10 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
 
-    compile 'com.google.brillo:iot-sdk:0.5'
+    compile 'com.google.brillo:iot-sdk:0.6'
+    compile 'com.google.brillo.driver:button:0.2'
+    compile 'com.google.brillo.driver:bmx280:0.3'
+
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'
     }
