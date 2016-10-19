@@ -45,6 +45,7 @@ import com.google.api.services.pubsub.model.PublishRequest;
 import com.google.api.services.pubsub.model.PubsubMessage;
 import com.google.brillo.driver.bmx280.Bmx280;
 import com.google.brillo.driver.button.Button;
+import com.google.brillo.driver.ht16k33.AlphanumericDisplay;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -74,6 +75,8 @@ public class MainActivity extends Activity {
     private Bmx280 mBmp280;
     private TemperatureSensorDriver mTemperatureSensorDriver;
 
+    private AlphanumericDisplay mDisplay;
+
     private float mLastTemperature;
 
     // Callback used when we register the BMP280 sensor driver with the system's SensorManager.
@@ -102,8 +105,15 @@ public class MainActivity extends Activity {
     private SensorEventListener mTemperatureListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            Log.d(TAG, "onSensorChanged: " + event.values[0]);
             mLastTemperature = event.values[0];
+            Log.d(TAG, "[onSensorChanged] " + mLastTemperature);
+            if (mDisplay != null) {
+                try {
+                    mDisplay.display(mLastTemperature);
+                } catch (ErrnoException e) {
+                    Log.e(TAG, "Error setting display", e);
+                }
+            }
         }
 
         @Override
@@ -155,6 +165,7 @@ public class MainActivity extends Activity {
     }
 
     private void initPeripherals() {
+        // GPIO
         try {
             mButton = new Button(BoardConfig.getButtonGpioPin(),
                     Button.LogicState.PRESSED_WHEN_HIGH);
@@ -164,16 +175,31 @@ public class MainActivity extends Activity {
                 }
                 return true; // continue to receive events from this button
             });
-            Log.d(TAG, "onCreate: Initialized GPIO button");
+            Log.d(TAG, "Initialized GPIO button");
         } catch (ErrnoException e) {
             throw new RuntimeException("Error initializing GIPO button", e);
         }
 
+        // I2C
+        // Note: The board has a single I2C bus, but multiple peripherals can be connected to it and
+        // we can access them all, as long as they each have a different address on the bus. Many
+        // peripherals can be configured to use a different address, often by connecting the pins a
+        // certain way; this may be necessary if the default address conflicts with another
+        // peripheral's. In our case, the temperature sensor and the display have different default
+        // addresses, so everything just works.
         try {
             mBmp280 = new Bmx280(BoardConfig.getI2cBus());
             Log.d(TAG, "onCreate: Initialized I2C Bmp280");
         } catch (ErrnoException e) {
             throw new RuntimeException("Error initializing Bmp280", e);
+        }
+        try {
+            mDisplay = new AlphanumericDisplay(BoardConfig.getI2cBus());
+            mDisplay.setEnabled(true);
+            mDisplay.clear();
+            Log.d(TAG, "Initialized I2C Display");
+        } catch (ErrnoException e) {
+            throw new RuntimeException("Error intializing display", e);
         }
 
         // Register the BMP280 sensor driver with the system. While you can get the current
@@ -218,6 +244,16 @@ public class MainActivity extends Activity {
         if (mBmp280 != null) {
             mBmp280.close();
             mBmp280 = null;
+        }
+        if (mDisplay != null) {
+            try {
+                mDisplay.clear();
+                mDisplay.setEnabled(false);
+            } catch (ErrnoException e) {
+                Log.e(TAG, "Error disabling display", e);
+            }
+            mDisplay.close();
+            mDisplay = null;
         }
     }
 
