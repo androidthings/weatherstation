@@ -23,6 +23,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.userdriver.InputDriver;
 import android.hardware.userdriver.UserDriverManager;
+import android.hardware.userdriver.sensors.PressureSensorDriver;
 import android.hardware.userdriver.sensors.TemperatureSensorDriver;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -62,6 +63,29 @@ public class MainActivity extends Activity {
     private static final String PUBSUB_APP = "brillo-weather-sensor";
     private static final String PUBSUB_TOPIC = PROJECT + "/topics/" + BuildConfig.PUBSUB_TOPIC;
 
+    private enum DisplayMode {
+        TEMPERATURE {
+            @Override
+            DisplayMode nextMode() {
+                return PRESSURE;
+            }
+        },
+        PRESSURE {
+            @Override
+            DisplayMode nextMode() {
+                return HUMIDITY;
+            }
+        },
+        HUMIDITY {
+            @Override
+            DisplayMode nextMode() {
+                return TEMPERATURE;
+            }
+        };
+
+        abstract DisplayMode nextMode();
+    }
+
     private SensorManager mSensorManager;
 
     private Pubsub mPubsub;
@@ -74,10 +98,13 @@ public class MainActivity extends Activity {
 
     private Bmx280 mBmp280;
     private TemperatureSensorDriver mTemperatureSensorDriver;
+    private PressureSensorDriver mPressureSensorDriver;
 
     private AlphanumericDisplay mDisplay;
+    private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
 
     private float mLastTemperature;
+    private float mLastPressure;
 
     // Callback used when we register the BMP280 sensor driver with the system's SensorManager.
     private SensorManager.DynamicSensorCallback mDynamicSensorCallback
@@ -91,6 +118,10 @@ public class MainActivity extends Activity {
                     || sensor.getType() == Sensor.TYPE_TEMPERATURE) {
                 // Our sensor is connected. Start receiving temperature data.
                 mSensorManager.registerListener(mTemperatureListener, sensor,
+                        SensorManager.SENSOR_DELAY_NORMAL);
+            } else if (sensor.getType() == Sensor.TYPE_PRESSURE) {
+                // Our sensor is connected. Start receiving pressure data.
+                mSensorManager.registerListener(mPressureListener, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
             }
         }
@@ -106,13 +137,26 @@ public class MainActivity extends Activity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             mLastTemperature = event.values[0];
-            Log.d(TAG, "[onSensorChanged] " + mLastTemperature);
-            if (mDisplay != null) {
-                try {
-                    mDisplay.display(mLastTemperature);
-                } catch (ErrnoException e) {
-                    Log.e(TAG, "Error setting display", e);
-                }
+            Log.d(TAG, "[temperature sensor] " + mLastTemperature);
+            if (mDisplayMode == DisplayMode.TEMPERATURE) {
+                updateDisplay();
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            Log.d(TAG, "[onAccuracyChanged] " + accuracy);
+        }
+    };
+
+    // Callback when SensorManager delivers pressure data.
+    private SensorEventListener mPressureListener = new SensorEventListener() {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            mLastPressure = event.values[0];
+            Log.d(TAG, "[pressure sensor] " + mLastPressure);
+            if (mDisplayMode == DisplayMode.PRESSURE) {
+                updateDisplay();
             }
         }
 
@@ -171,7 +215,7 @@ public class MainActivity extends Activity {
                     Button.LogicState.PRESSED_WHEN_HIGH);
             mButton.setOnButtonEventListener((button, pressed) -> {
                 if (!pressed) { // activate on release
-                    mPubsubHandler.post(this::publishMessage);
+                    toggleDisplayMode();
                 }
                 return true; // continue to receive events from this button
             });
@@ -189,7 +233,7 @@ public class MainActivity extends Activity {
         // addresses, so everything just works.
         try {
             mBmp280 = new Bmx280(BoardConfig.getI2cBus());
-            Log.d(TAG, "onCreate: Initialized I2C Bmp280");
+            Log.d(TAG, "Initialized I2C Bmp280");
         } catch (ErrnoException e) {
             throw new RuntimeException("Error initializing Bmp280", e);
         }
@@ -209,7 +253,10 @@ public class MainActivity extends Activity {
         // location provider can use multiple location providers to report the best location.
         mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
         mTemperatureSensorDriver = mBmp280.createTemperatureSensorDriver();
+        mPressureSensorDriver = mBmp280.createPressureSensorDriver();
+
         UserDriverManager.getManager().registerSensorDriver(mTemperatureSensorDriver);
+        UserDriverManager.getManager().registerSensorDriver(mPressureSensorDriver);
     }
 
     @Override
@@ -223,6 +270,7 @@ public class MainActivity extends Activity {
 
         // Clean up sensor registrations
         mSensorManager.unregisterListener(mTemperatureListener);
+        mSensorManager.unregisterListener(mPressureListener);
         mSensorManager.unregisterDynamicSensorCallback(mDynamicSensorCallback);
 
         // Clean up user drivers
@@ -230,6 +278,10 @@ public class MainActivity extends Activity {
         if (mTemperatureSensorDriver != null) {
             userDriverManager.unregisterSensorDriver(mTemperatureSensorDriver);
             mTemperatureSensorDriver = null;
+        }
+        if (mPressureSensorDriver != null) {
+            userDriverManager.unregisterSensorDriver(mPressureSensorDriver);
+            mPressureSensorDriver = null;
         }
         if (mButtonInputDriver != null) {
             userDriverManager.unregisterInputDriver(mButtonInputDriver);
@@ -255,6 +307,36 @@ public class MainActivity extends Activity {
             mDisplay.close();
             mDisplay = null;
         }
+
+        // clean up worker thread
+        mPubsubThread.quitSafely();
+        mPubsubHandler = null;
+    }
+
+    private void toggleDisplayMode() {
+        mDisplayMode = mDisplayMode.nextMode();
+        // TODO skip humidity if BMX280 chipId is not 0x60
+        updateDisplay();
+    }
+
+    private void updateDisplay() {
+        if (mDisplay != null) {
+            try {
+                switch (mDisplayMode) {
+                    case TEMPERATURE:
+                        mDisplay.display(mLastTemperature);
+                        break;
+                    case PRESSURE:
+                        mDisplay.display(mLastPressure);
+                        break;
+                    case HUMIDITY:
+                        // TODO mDisplay.display(mLastHumidity);
+                        // TODO break;
+                }
+            } catch (ErrnoException e) {
+                Log.e(TAG, "Error setting display", e);
+            }
+        }
     }
 
     private void publishMessage() {
@@ -271,7 +353,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        JSONObject messagePayload = createMessagePayload(mLastTemperature);
+        JSONObject messagePayload = createMessagePayload(mLastTemperature, mLastPressure);
         if (messagePayload == null) {
             Log.e(TAG, "[publishMessage] No message payload");
             return;
@@ -290,12 +372,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    private JSONObject createMessagePayload(float temperature) {
+    private JSONObject createMessagePayload(float temperature, float pressure) {
         try {
             // Dataflow-pipeline worker expects them all to be strings.
             JSONObject sensorData = new JSONObject();
             sensorData.put("temperature", String.valueOf(temperature));
-            // TODO sensorData.put("pressure", String.valueOf(pressure));
+            sensorData.put("pressure", String.valueOf(pressure));
 
             JSONObject messagePayload = new JSONObject();
             messagePayload.put("deviceId", Build.DEVICE);
