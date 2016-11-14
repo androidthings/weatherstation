@@ -220,7 +220,7 @@ public class MainActivity extends Activity {
                 return true; // continue to receive events from this button
             });
             Log.d(TAG, "Initialized GPIO button");
-        } catch (ErrnoException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error initializing GIPO button", e);
         }
 
@@ -234,7 +234,7 @@ public class MainActivity extends Activity {
         try {
             mBmp280 = new Bmx280(BoardConfig.getI2cBus());
             Log.d(TAG, "Initialized I2C Bmp280");
-        } catch (ErrnoException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error initializing Bmp280", e);
         }
         try {
@@ -242,7 +242,7 @@ public class MainActivity extends Activity {
             mDisplay.setEnabled(true);
             mDisplay.clear();
             Log.d(TAG, "Initialized I2C Display");
-        } catch (ErrnoException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Error intializing display", e);
         }
 
@@ -290,22 +290,33 @@ public class MainActivity extends Activity {
 
         // Clean up peripheral device connections
         if (mButton != null) {
-            mButton.close();
-            mButton = null;
+            try {
+                mButton.close();
+            } catch (IOException e) {
+                Log.e(TAG, "[onDestroy] error closing button", e);
+            } finally {
+                mButton = null;
+            }
         }
         if (mBmp280 != null) {
-            mBmp280.close();
-            mBmp280 = null;
+            try {
+                mBmp280.close();
+            } catch (IOException e) {
+                Log.e(TAG, "[onDestroy] error closing button", e);
+            } finally {
+                mBmp280 = null;
+            }
         }
         if (mDisplay != null) {
             try {
                 mDisplay.clear();
                 mDisplay.setEnabled(false);
-            } catch (ErrnoException e) {
+                mDisplay.close();
+            } catch (IOException e) {
                 Log.e(TAG, "Error disabling display", e);
+            } finally {
+                mDisplay = null;
             }
-            mDisplay.close();
-            mDisplay = null;
         }
 
         // clean up worker thread
@@ -333,7 +344,7 @@ public class MainActivity extends Activity {
                         // TODO mDisplay.display(mLastHumidity);
                         // TODO break;
                 }
-            } catch (ErrnoException e) {
+            } catch (IOException e) {
                 Log.e(TAG, "Error setting display", e);
             }
         }

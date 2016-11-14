@@ -11,6 +11,8 @@ public final class BoardConfig {
         switch (Build.DEVICE) {
             case "edison":
                 return "IO2";
+            case "rpi3":
+                return "16";
             // TODO case "rpi3":
             // TODO case "nxp":
             default:
@@ -22,6 +24,8 @@ public final class BoardConfig {
         switch (Build.DEVICE) {
             case "edison":
                 return "I2C6";
+            case "rpi3":
+                return "I2C1";
             // TODO case "rpi3":
             // TODO case "nxp":
             default:
