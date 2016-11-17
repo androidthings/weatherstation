@@ -221,7 +221,7 @@ public class MainActivity extends Activity {
             });
             Log.d(TAG, "Initialized GPIO button");
         } catch (IOException e) {
-            throw new RuntimeException("Error initializing GIPO button", e);
+            throw new RuntimeException("Error initializing GPIO button", e);
         }
 
         // I2C

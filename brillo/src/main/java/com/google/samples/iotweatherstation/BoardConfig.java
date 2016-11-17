@@ -12,7 +12,7 @@ public final class BoardConfig {
             case "edison":
                 return "IO2";
             case "rpi3":
-                return "16";
+                return "BCM16";
             // TODO case "rpi3":
             // TODO case "nxp":
             default:
