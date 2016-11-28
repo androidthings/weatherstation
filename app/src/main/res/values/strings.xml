@@ -14,5 +14,5 @@
     limitations under the License.
 -->
 <resources>
-    <string name="app_name">IoT Weatherstation</string>
+    <string name="app_name">Weatherstation</string>
 </resources>

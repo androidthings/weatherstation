@@ -15,7 +15,7 @@
     limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.google.samples.iotweatherstation">
+    package="com.example.androidthings.weatherstation">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -24,7 +24,7 @@
         android:allowBackup="true"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="@string/app_name">
-        <activity android:name=".MainActivity">
+        <activity android:name=".WeatherStationActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

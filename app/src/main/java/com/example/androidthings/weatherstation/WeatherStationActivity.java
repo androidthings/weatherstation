@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.samples.iotweatherstation;
+package com.example.androidthings.weatherstation;
 
 import android.app.Activity;
 import android.content.Context;
@@ -31,7 +31,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.system.ErrnoException;
 import android.util.Base64;
 import android.util.Log;
 
@@ -55,13 +54,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 
-public class MainActivity extends Activity {
+public class WeatherStationActivity extends Activity {
 
-    private static final String TAG = "MainActivity";
+    private static final String TAG = WeatherStationActivity.class.getSimpleName();
 
     private static final String PROJECT = "projects/" + BuildConfig.PROJECT_ID;
-    private static final String PUBSUB_APP = "brillo-weather-sensor";
     private static final String PUBSUB_TOPIC = PROJECT + "/topics/" + BuildConfig.PUBSUB_TOPIC;
+    private static final String PUBSUB_APP = "weatherstation";
 
     private enum DisplayMode {
         TEMPERATURE {

@@ -1,4 +1,4 @@
-package com.google.samples.iotweatherstation;
+package com.example.androidthings.weatherstation;
 
 import android.os.Build;
 
@@ -10,10 +10,9 @@ public final class BoardConfig {
     public static String getButtonGpioPin() {
         switch (Build.DEVICE) {
             case "edison":
-                return "IO2";
+                return "IO13";
             case "rpi3":
-                return "BCM16";
-            // TODO case "rpi3":
+                return "BCM6";
             // TODO case "nxp":
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
@@ -26,7 +25,6 @@ public final class BoardConfig {
                 return "I2C6";
             case "rpi3":
                 return "I2C1";
-            // TODO case "rpi3":
             // TODO case "nxp":
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
