@@ -18,7 +18,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.3"
+    buildToolsVersion "25.0.0"
 
     defaultConfig {
         applicationId "com.example.androidthings.weatherstation"
@@ -26,9 +26,6 @@ android {
         targetSdkVersion 24
         versionCode 1
         versionName "1.0"
-        jackOptions {
-            enabled = true;
-        }
     }
     buildTypes {
         debug {
@@ -42,20 +39,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
 
-    compile 'com.google.brillo:iot-sdk:0.8'
-    compile 'com.google.brillo.driver:button:0.5'
-    compile 'com.google.brillo.driver:bmx280:0.6'
-    compile 'com.google.brillo.driver:ht16k33:0.4'
+    provided 'com.android.things:androidthings:0.2-RC1-preview'
+    compile 'com.google.androidthings.driver:button:0.4'
+    compile 'com.google.androidthings.driver:bmx280:0.4'
+    compile 'com.google.androidthings.driver:ht16k33:0.4'
 
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'

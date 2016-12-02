@@ -22,10 +22,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.hardware.userdriver.InputDriver;
-import android.hardware.userdriver.UserDriverManager;
-import android.hardware.userdriver.sensors.PressureSensorDriver;
-import android.hardware.userdriver.sensors.TemperatureSensorDriver;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
@@ -34,7 +30,13 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Base64;
 import android.util.Log;
+import android.view.KeyEvent;
 
+import com.google.androidthings.driver.bmx280.Bmx280PressureSensorDriver;
+import com.google.androidthings.driver.bmx280.Bmx280TemperatureSensorDriver;
+import com.google.androidthings.driver.button.Button;
+import com.google.androidthings.driver.button.ButtonInputDriver;
+import com.google.androidthings.driver.ht16k33.AlphanumericDisplay;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.http.HttpTransport;
@@ -44,9 +46,6 @@ import com.google.api.services.pubsub.Pubsub;
 import com.google.api.services.pubsub.PubsubScopes;
 import com.google.api.services.pubsub.model.PublishRequest;
 import com.google.api.services.pubsub.model.PubsubMessage;
-import com.google.brillo.driver.bmx280.Bmx280;
-import com.google.brillo.driver.button.Button;
-import com.google.brillo.driver.ht16k33.AlphanumericDisplay;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -93,12 +92,10 @@ public class WeatherStationActivity extends Activity {
     private HandlerThread mPubsubThread;
     private Handler mPubsubHandler;
 
-    private Button mButton;
-    private InputDriver mButtonInputDriver;
+    private ButtonInputDriver mButtonInputDriver;
 
-    private Bmx280 mBmp280;
-    private TemperatureSensorDriver mTemperatureSensorDriver;
-    private PressureSensorDriver mPressureSensorDriver;
+    private Bmx280TemperatureSensorDriver mTemperatureSensorDriver;
+    private Bmx280PressureSensorDriver mPressureSensorDriver;
 
     private AlphanumericDisplay mDisplay;
     private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
@@ -166,6 +163,36 @@ public class WeatherStationActivity extends Activity {
         }
     };
 
+    private Runnable mInitPubSubRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mPubsub != null) {
+                return;
+            }
+
+            InputStream jsonCredentials = getResources().openRawResource(R.raw.credentials);
+            GoogleCredential credentials;
+            try {
+                credentials = GoogleCredential.fromStream(jsonCredentials).createScoped(
+                        Collections.singleton(PubsubScopes.PUBSUB));
+            } catch (IOException e) {
+                throw new RuntimeException("Error loading credentials", e);
+            } finally {
+                try {
+                    jsonCredentials.close();
+                } catch (IOException e) {
+                    Log.e(TAG, "[initPubSub] Error closing input stream", e);
+                }
+            }
+
+            Log.d(TAG, "credentials loaded");
+            mHttpTransport = AndroidHttp.newCompatibleTransport();
+            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+            mPubsub = new Pubsub.Builder(mHttpTransport, jsonFactory, credentials)
+                    .setApplicationName(PUBSUB_APP).build();
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -176,67 +203,39 @@ public class WeatherStationActivity extends Activity {
         mPubsubThread.start();
         mPubsubHandler = new Handler(mPubsubThread.getLooper());
 
-        mPubsubHandler.post(this::initPubSub);
+        mPubsubHandler.post(mInitPubSubRunnable);
 
         initPeripherals();
     }
 
-    private void initPubSub() {
-        if (mPubsub != null) {
-            return;
-        }
-
-        InputStream jsonCredentials = getResources().openRawResource(R.raw.credentials);
-        GoogleCredential credentials;
-        try {
-            credentials = GoogleCredential.fromStream(jsonCredentials).createScoped(
-                    Collections.singleton(PubsubScopes.PUBSUB));
-        } catch (IOException e) {
-            throw new RuntimeException("Error loading credentials", e);
-        } finally {
-            try {
-                jsonCredentials.close();
-            } catch (IOException e) {
-                Log.e(TAG, "[initPubSub] Error closing input stream", e);
-            }
-        }
-
-        Log.d(TAG, "credentials loaded");
-        mHttpTransport = AndroidHttp.newCompatibleTransport();
-        JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-        mPubsub = new Pubsub.Builder(mHttpTransport, jsonFactory, credentials)
-                .setApplicationName(PUBSUB_APP).build();
-    }
-
     private void initPeripherals() {
-        // GPIO
+        // GPIO button that generates a space keypress (handled by onKeyUp method)
         try {
-            mButton = new Button(BoardConfig.getButtonGpioPin(),
-                    Button.LogicState.PRESSED_WHEN_HIGH);
-            mButton.setOnButtonEventListener((button, pressed) -> {
-                if (!pressed) { // activate on release
-                    toggleDisplayMode();
-                }
-                return true; // continue to receive events from this button
-            });
-            Log.d(TAG, "Initialized GPIO button");
+            mButtonInputDriver = new ButtonInputDriver(BoardConfig.getButtonGpioPin(),
+                    Button.LogicState.PRESSED_WHEN_HIGH, KeyEvent.KEYCODE_SPACE);
+            Log.d(TAG, "Initialized GPIO Button that generates a Space keypress");
         } catch (IOException e) {
             throw new RuntimeException("Error initializing GPIO button", e);
         }
 
         // I2C
-        // Note: The board has a single I2C bus, but multiple peripherals can be connected to it and
-        // we can access them all, as long as they each have a different address on the bus. Many
-        // peripherals can be configured to use a different address, often by connecting the pins a
-        // certain way; this may be necessary if the default address conflicts with another
-        // peripheral's. In our case, the temperature sensor and the display have different default
-        // addresses, so everything just works.
+        // Note: In this sample we only use one I2C bus, but multiple peripherals can be connected
+        // to it and we can access them all, as long as they each have a different address on the
+        // bus. Many peripherals can be configured to use a different address, often by connecting
+        // the pins a certain way; this may be necessary if the default address conflicts with
+        // another peripheral's. In our case, the temperature sensor and the display have
+        // different default addresses, so everything just works.
         try {
-            mBmp280 = new Bmx280(BoardConfig.getI2cBus());
+            mTemperatureSensorDriver = new Bmx280TemperatureSensorDriver(BoardConfig.getI2cBus());
+            mPressureSensorDriver = new Bmx280PressureSensorDriver(BoardConfig.getI2cBus());
+            mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
+            mTemperatureSensorDriver.register();
+            mPressureSensorDriver.register();
             Log.d(TAG, "Initialized I2C Bmp280");
         } catch (IOException e) {
             throw new RuntimeException("Error initializing Bmp280", e);
         }
+
         try {
             mDisplay = new AlphanumericDisplay(BoardConfig.getI2cBus());
             mDisplay.setEnabled(true);
@@ -246,17 +245,15 @@ public class WeatherStationActivity extends Activity {
             throw new RuntimeException("Error intializing display", e);
         }
 
-        // Register the BMP280 sensor driver with the system. While you can get the current
-        // temperature directly (using mBmp280.readTemperature()), registering the driver and using
-        // the SensorManager APIs allows you to take advantage of other existing sensors that may be
-        // present and which may provide better data in the current conditions, much like the fused
-        // location provider can use multiple location providers to report the best location.
-        mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
-        mTemperatureSensorDriver = mBmp280.createTemperatureSensorDriver();
-        mPressureSensorDriver = mBmp280.createPressureSensorDriver();
+    }
 
-        UserDriverManager.getManager().registerSensorDriver(mTemperatureSensorDriver);
-        UserDriverManager.getManager().registerSensorDriver(mPressureSensorDriver);
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            toggleDisplayMode();
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
@@ -274,39 +271,31 @@ public class WeatherStationActivity extends Activity {
         mSensorManager.unregisterDynamicSensorCallback(mDynamicSensorCallback);
 
         // Clean up user drivers
-        UserDriverManager userDriverManager = UserDriverManager.getManager();
         if (mTemperatureSensorDriver != null) {
-            userDriverManager.unregisterSensorDriver(mTemperatureSensorDriver);
+            try {
+                mTemperatureSensorDriver.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             mTemperatureSensorDriver = null;
         }
         if (mPressureSensorDriver != null) {
-            userDriverManager.unregisterSensorDriver(mPressureSensorDriver);
+            try {
+                mPressureSensorDriver.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             mPressureSensorDriver = null;
         }
         if (mButtonInputDriver != null) {
-            userDriverManager.unregisterInputDriver(mButtonInputDriver);
+            try {
+                mButtonInputDriver.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             mButtonInputDriver = null;
         }
 
-        // Clean up peripheral device connections
-        if (mButton != null) {
-            try {
-                mButton.close();
-            } catch (IOException e) {
-                Log.e(TAG, "[onDestroy] error closing button", e);
-            } finally {
-                mButton = null;
-            }
-        }
-        if (mBmp280 != null) {
-            try {
-                mBmp280.close();
-            } catch (IOException e) {
-                Log.e(TAG, "[onDestroy] error closing button", e);
-            } finally {
-                mBmp280 = null;
-            }
-        }
         if (mDisplay != null) {
             try {
                 mDisplay.clear();
