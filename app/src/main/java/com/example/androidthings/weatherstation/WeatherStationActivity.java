@@ -209,7 +209,7 @@ public class WeatherStationActivity extends Activity {
     private void initPeripherals() {
         // GPIO button that generates a space keypress (handled by onKeyUp method)
         try {
-            mButtonInputDriver = new ButtonInputDriver(BoardConfig.getButtonGpioPin(),
+            mButtonInputDriver = new ButtonInputDriver(BoardDefaults.getButtonGpioPin(),
                     Button.LogicState.PRESSED_WHEN_HIGH, KeyEvent.KEYCODE_SPACE);
             Log.d(TAG, "Initialized GPIO Button that generates a Space keypress");
         } catch (IOException e) {
@@ -224,7 +224,7 @@ public class WeatherStationActivity extends Activity {
         // another peripheral's. In our case, the temperature sensor and the display have
         // different default addresses, so everything just works.
         try {
-            mEnvironmentalSensorDriver = new Bmx280SensorDriver(BoardConfig.getI2cBus());
+            mEnvironmentalSensorDriver = new Bmx280SensorDriver(BoardDefaults.getI2cBus());
             mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
             mEnvironmentalSensorDriver.registerTemperatureSensor();
             mEnvironmentalSensorDriver.registerPressureSensor();
@@ -234,7 +234,7 @@ public class WeatherStationActivity extends Activity {
         }
 
         try {
-            mDisplay = new AlphanumericDisplay(BoardConfig.getI2cBus());
+            mDisplay = new AlphanumericDisplay(BoardDefaults.getI2cBus());
             mDisplay.setEnabled(true);
             mDisplay.clear();
             Log.d(TAG, "Initialized I2C Display");

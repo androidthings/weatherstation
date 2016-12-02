@@ -19,17 +19,21 @@ package com.example.androidthings.weatherstation;
 import android.os.Build;
 
 @SuppressWarnings("WeakerAccess")
-public final class BoardConfig {
+public final class BoardDefaults {
+    private static final String DEVICE_EDISON = "edison";
+    private static final String DEVICE_RPI3 = "rpi3";
+    private static final String DEVICE_NXP = "imx6ul";
 
-    private BoardConfig() { /*no instance*/ }
+    private BoardDefaults() { /*no instance*/ }
 
     public static String getButtonGpioPin() {
         switch (Build.DEVICE) {
-            case "edison":
+            case DEVICE_EDISON:
                 return "IO13";
-            case "rpi3":
+            case DEVICE_RPI3:
                 return "BCM6";
-            // TODO case "nxp":
+            case DEVICE_NXP:
+                return "GPIO_25";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -37,11 +41,12 @@ public final class BoardConfig {
 
     public static String getI2cBus() {
         switch (Build.DEVICE) {
-            case "edison":
+            case DEVICE_EDISON:
                 return "I2C6";
-            case "rpi3":
+            case DEVICE_RPI3:
                 return "I2C1";
-            // TODO case "nxp":
+            case DEVICE_NXP:
+                return "I2C2";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
