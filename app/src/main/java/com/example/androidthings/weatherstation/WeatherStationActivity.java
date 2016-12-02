@@ -32,8 +32,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 
-import com.google.androidthings.driver.bmx280.Bmx280PressureSensorDriver;
-import com.google.androidthings.driver.bmx280.Bmx280TemperatureSensorDriver;
+import com.google.androidthings.driver.bmx280.Bmx280SensorDriver;
 import com.google.androidthings.driver.button.Button;
 import com.google.androidthings.driver.button.ButtonInputDriver;
 import com.google.androidthings.driver.ht16k33.AlphanumericDisplay;
@@ -94,8 +93,7 @@ public class WeatherStationActivity extends Activity {
 
     private ButtonInputDriver mButtonInputDriver;
 
-    private Bmx280TemperatureSensorDriver mTemperatureSensorDriver;
-    private Bmx280PressureSensorDriver mPressureSensorDriver;
+    private Bmx280SensorDriver mEnvironmentalSensorDriver;
 
     private AlphanumericDisplay mDisplay;
     private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
@@ -226,11 +224,10 @@ public class WeatherStationActivity extends Activity {
         // another peripheral's. In our case, the temperature sensor and the display have
         // different default addresses, so everything just works.
         try {
-            mTemperatureSensorDriver = new Bmx280TemperatureSensorDriver(BoardConfig.getI2cBus());
-            mPressureSensorDriver = new Bmx280PressureSensorDriver(BoardConfig.getI2cBus());
+            mEnvironmentalSensorDriver = new Bmx280SensorDriver(BoardConfig.getI2cBus());
             mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
-            mTemperatureSensorDriver.register();
-            mPressureSensorDriver.register();
+            mEnvironmentalSensorDriver.registerTemperatureSensor();
+            mEnvironmentalSensorDriver.registerPressureSensor();
             Log.d(TAG, "Initialized I2C Bmp280");
         } catch (IOException e) {
             throw new RuntimeException("Error initializing Bmp280", e);
@@ -271,21 +268,13 @@ public class WeatherStationActivity extends Activity {
         mSensorManager.unregisterDynamicSensorCallback(mDynamicSensorCallback);
 
         // Clean up user drivers
-        if (mTemperatureSensorDriver != null) {
+        if (mEnvironmentalSensorDriver != null) {
             try {
-                mTemperatureSensorDriver.close();
+                mEnvironmentalSensorDriver.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            mTemperatureSensorDriver = null;
-        }
-        if (mPressureSensorDriver != null) {
-            try {
-                mPressureSensorDriver.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            mPressureSensorDriver = null;
+            mEnvironmentalSensorDriver = null;
         }
         if (mButtonInputDriver != null) {
             try {
