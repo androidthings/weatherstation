@@ -71,12 +71,6 @@ public class WeatherStationActivity extends Activity {
         PRESSURE {
             @Override
             DisplayMode nextMode() {
-                return HUMIDITY;
-            }
-        },
-        HUMIDITY {
-            @Override
-            DisplayMode nextMode() {
                 return TEMPERATURE;
             }
         };
@@ -167,8 +161,12 @@ public class WeatherStationActivity extends Activity {
             if (mPubsub != null) {
                 return;
             }
-
-            InputStream jsonCredentials = getResources().openRawResource(R.raw.credentials);
+            int credentialResourceId =
+                    getResources().getIdentifier("credentials", "raw", getPackageName());
+            if (credentialResourceId == 0) {
+                return;
+            }
+            InputStream jsonCredentials = getResources().openRawResource(credentialResourceId);
             GoogleCredential credentials;
             try {
                 credentials = GoogleCredential.fromStream(jsonCredentials).createScoped(
@@ -210,8 +208,9 @@ public class WeatherStationActivity extends Activity {
         // GPIO button that generates a space keypress (handled by onKeyUp method)
         try {
             mButtonInputDriver = new ButtonInputDriver(BoardDefaults.getButtonGpioPin(),
-                    Button.LogicState.PRESSED_WHEN_HIGH, KeyEvent.KEYCODE_SPACE);
-            Log.d(TAG, "Initialized GPIO Button that generates a Space keypress");
+                        Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_A);
+            mButtonInputDriver.register();
+            Log.d(TAG, "Initialized GPIO Button that generates a keypress with KEYCODE_A");
         } catch (IOException e) {
             throw new RuntimeException("Error initializing GPIO button", e);
         }
@@ -246,7 +245,7 @@ public class WeatherStationActivity extends Activity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+        if (keyCode == KeyEvent.KEYCODE_A) {
             toggleDisplayMode();
             return true;
         }
@@ -304,7 +303,6 @@ public class WeatherStationActivity extends Activity {
 
     private void toggleDisplayMode() {
         mDisplayMode = mDisplayMode.nextMode();
-        // TODO skip humidity if BMX280 chipId is not 0x60
         updateDisplay();
     }
 
@@ -318,9 +316,6 @@ public class WeatherStationActivity extends Activity {
                     case PRESSURE:
                         mDisplay.display(mLastPressure);
                         break;
-                    case HUMIDITY:
-                        // TODO mDisplay.display(mLastHumidity);
-                        // TODO break;
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Error setting display", e);
