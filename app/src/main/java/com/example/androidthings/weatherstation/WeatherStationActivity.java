@@ -16,8 +16,12 @@
 
 package com.example.androidthings.weatherstation;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -31,11 +35,16 @@ import android.os.HandlerThread;
 import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.animation.LinearInterpolator;
 
+import com.google.androidthings.driver.apa102.Apa102;
 import com.google.androidthings.driver.bmx280.Bmx280SensorDriver;
 import com.google.androidthings.driver.button.Button;
 import com.google.androidthings.driver.button.ButtonInputDriver;
 import com.google.androidthings.driver.ht16k33.AlphanumericDisplay;
+import com.google.androidthings.driver.pwmspeaker.Speaker;
+import com.google.androidthings.pio.Gpio;
+import com.google.androidthings.pio.PeripheralManagerService;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.http.HttpTransport;
@@ -62,20 +71,8 @@ public class WeatherStationActivity extends Activity {
     private static final String PUBSUB_APP = "weatherstation";
 
     private enum DisplayMode {
-        TEMPERATURE {
-            @Override
-            DisplayMode nextMode() {
-                return PRESSURE;
-            }
-        },
-        PRESSURE {
-            @Override
-            DisplayMode nextMode() {
-                return TEMPERATURE;
-            }
-        };
-
-        abstract DisplayMode nextMode();
+        TEMPERATURE,
+        PRESSURE
     }
 
     private SensorManager mSensorManager;
@@ -84,13 +81,22 @@ public class WeatherStationActivity extends Activity {
     private HttpTransport mHttpTransport;
     private HandlerThread mPubsubThread;
     private Handler mPubsubHandler;
-
     private ButtonInputDriver mButtonInputDriver;
 
     private Bmx280SensorDriver mEnvironmentalSensorDriver;
 
     private AlphanumericDisplay mDisplay;
     private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
+
+    private Apa102 mLedstrip;
+    private int[] mRainbow = new int[7];
+    private static final int LEDSTRIP_BRIGHTNESS = 1;
+    private static final float BAROMETER_RANGE_LOW = 965.f;
+    private static final float BAROMETER_RANGE_HIGH = 1035.f;
+
+    private Gpio mLed;
+    private int SPEAKER_READY_DELAY_MS = 300;
+    private Speaker mSpeaker;
 
     private float mLastTemperature;
     private float mLastPressure;
@@ -128,7 +134,7 @@ public class WeatherStationActivity extends Activity {
             mLastTemperature = event.values[0];
             Log.d(TAG, "[temperature sensor] " + mLastTemperature);
             if (mDisplayMode == DisplayMode.TEMPERATURE) {
-                updateDisplay();
+                updateDisplay(mLastTemperature);
             }
         }
 
@@ -145,8 +151,9 @@ public class WeatherStationActivity extends Activity {
             mLastPressure = event.values[0];
             Log.d(TAG, "[pressure sensor] " + mLastPressure);
             if (mDisplayMode == DisplayMode.PRESSURE) {
-                updateDisplay();
+                updateDisplay(mLastPressure);
             }
+            updateBarometer(mLastPressure);
         }
 
         @Override
@@ -227,9 +234,9 @@ public class WeatherStationActivity extends Activity {
             mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
             mEnvironmentalSensorDriver.registerTemperatureSensor();
             mEnvironmentalSensorDriver.registerPressureSensor();
-            Log.d(TAG, "Initialized I2C Bmp280");
+            Log.d(TAG, "Initialized I2C BMP280");
         } catch (IOException e) {
-            throw new RuntimeException("Error initializing Bmp280", e);
+            throw new RuntimeException("Error initializing BMP280", e);
         }
 
         try {
@@ -238,19 +245,99 @@ public class WeatherStationActivity extends Activity {
             mDisplay.clear();
             Log.d(TAG, "Initialized I2C Display");
         } catch (IOException e) {
-            throw new RuntimeException("Error intializing display", e);
+            throw new RuntimeException("Error initializing display", e);
         }
 
+        try {
+            mLedstrip = new Apa102(BoardDefaults.getSpiBus(), Apa102.Mode.BGR);
+            mLedstrip.setBrightness(LEDSTRIP_BRIGHTNESS);
+            for (int i = 0; i < mRainbow.length; i++) {
+                float[] hsv = {i * 360.f / mRainbow.length, 1.0f, 1.0f};
+                mRainbow[i] = Color.HSVToColor(255, hsv);
+            }
+        } catch (IOException e) {
+            mLedstrip = null; // Led strip is optional.
+        }
+
+        try {
+            PeripheralManagerService pioService = new PeripheralManagerService();
+            mLed = pioService.openGpio(BoardDefaults.getLedGpioPin());
+            mLed.setEdgeTriggerType(Gpio.EDGE_NONE);
+            mLed.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
+            mLed.setActiveType(Gpio.ACTIVE_HIGH);
+        } catch (IOException e) {
+            throw new RuntimeException("Error initializing led", e);
+        }
+
+        try {
+            mSpeaker = new Speaker(BoardDefaults.getSpeakerPwmPin());
+            final ValueAnimator slide = ValueAnimator.ofFloat(440, 440*4);
+            slide.setDuration(50);
+            slide.setRepeatCount(5);
+            slide.setInterpolator(new LinearInterpolator());
+            slide.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    try {
+                        float v = (float) animation.getAnimatedValue();
+                        mSpeaker.play(v);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Error sliding speaker", e);
+                    }
+                }
+            });
+            slide.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    try {
+                        mSpeaker.stop();
+                    } catch (IOException e) {
+                        throw new RuntimeException("Error sliding speaker", e);
+                    }
+                }
+            });
+            Handler handler = new Handler(getMainLooper());
+            handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        slide.start();
+                                    }
+                                }, SPEAKER_READY_DELAY_MS);
+        } catch (IOException e) {
+            throw new RuntimeException("Error initializing speaker", e);
+        }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_A) {
+            mDisplayMode = DisplayMode.PRESSURE;
+            updateDisplay(mLastPressure);
+            try {
+                mLed.setValue(true);
+            } catch (IOException e) {
+                Log.e(TAG, "error updating LED", e);
+            }
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_A) {
-            toggleDisplayMode();
+            mDisplayMode = DisplayMode.TEMPERATURE;
+            updateDisplay(mLastTemperature);
+            try {
+                mLed.setValue(false);
+            } catch (IOException e) {
+                Log.e(TAG, "error updating LED", e);
+            }
             return true;
         }
         return super.onKeyUp(keyCode, event);
     }
+
 
     @Override
     protected void onDestroy() {
@@ -296,30 +383,61 @@ public class WeatherStationActivity extends Activity {
             }
         }
 
+
+        if (mLedstrip != null) {
+            try {
+                mLedstrip.write(new int[7]);
+                mLedstrip.setBrightness(0);
+                mLedstrip.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Error disabling ledstrip", e);
+            } finally {
+                mLedstrip = null;
+            }
+        }
+
+        if (mLed != null) {
+            try {
+                mLed.setValue(false);
+                mLed.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Error disabling led", e);
+            } finally {
+                mLed = null;
+            }
+        }
+
         // clean up worker thread
         mPubsubThread.quitSafely();
         mPubsubHandler = null;
     }
 
-    private void toggleDisplayMode() {
-        mDisplayMode = mDisplayMode.nextMode();
-        updateDisplay();
-    }
-
-    private void updateDisplay() {
+    private void updateDisplay(float value) {
         if (mDisplay != null) {
             try {
-                switch (mDisplayMode) {
-                    case TEMPERATURE:
-                        mDisplay.display(mLastTemperature);
-                        break;
-                    case PRESSURE:
-                        mDisplay.display(mLastPressure);
-                        break;
-                }
+                mDisplay.display(value);
             } catch (IOException e) {
                 Log.e(TAG, "Error setting display", e);
             }
+        }
+    }
+
+    private void updateBarometer(float pressure) {
+        if (mLedstrip == null) {
+            return;
+        }
+        float t = (pressure - BAROMETER_RANGE_LOW) / (BAROMETER_RANGE_HIGH - BAROMETER_RANGE_LOW);
+        int n = (int)Math.ceil(mRainbow.length * t);
+        n = Math.max(0, Math.min(n, mRainbow.length));
+        int[] colors = new int[mRainbow.length];
+        for (int i = 0; i < n; i++) {
+            int ri = mRainbow.length-1-i;
+            colors[ri] = mRainbow[ri];
+        }
+        try {
+            mLedstrip.write(colors);
+        } catch (IOException e) {
+            Log.e(TAG, "Error setting ledstrip", e);
         }
     }
 

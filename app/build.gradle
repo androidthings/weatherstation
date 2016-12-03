@@ -48,6 +48,10 @@ dependencies {
     compile 'com.google.androidthings.driver:button:0.4'
     compile 'com.google.androidthings.driver:bmx280:0.4'
     compile 'com.google.androidthings.driver:ht16k33:0.4'
+    compile 'com.google.androidthings.driver:apa102:0.4'
+    compile 'com.google.androidthings.driver:pwm-speaker:0.4'
+
+
 
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'

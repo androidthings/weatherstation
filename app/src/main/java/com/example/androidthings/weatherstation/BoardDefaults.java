@@ -39,6 +39,19 @@ public final class BoardDefaults {
         }
     }
 
+    public static String getLedGpioPin() {
+        switch (Build.DEVICE) {
+            case DEVICE_EDISON:
+                return "IO12";
+            case DEVICE_RPI3:
+                return "BCM6";
+            case DEVICE_NXP:
+                return "GPIO_26";
+            default:
+                throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
+        }
+    }
+
     public static String getI2cBus() {
         switch (Build.DEVICE) {
             case DEVICE_EDISON:
@@ -47,6 +60,32 @@ public final class BoardDefaults {
                 return "I2C1";
             case DEVICE_NXP:
                 return "I2C2";
+            default:
+                throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
+        }
+    }
+
+    public static String getSpiBus() {
+        switch (Build.DEVICE) {
+            case DEVICE_EDISON:
+                return "SPI1";
+            case DEVICE_RPI3:
+                return "SPI0.0";
+            case DEVICE_NXP:
+                return "SPI2";
+            default:
+                throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
+        }
+    }
+
+    public static String getSpeakerPwmPin() {
+        switch (Build.DEVICE) {
+            case DEVICE_EDISON:
+                return "IO3";
+            case DEVICE_RPI3:
+                return "PWM1";
+            case DEVICE_NXP:
+                return "PWM7";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
