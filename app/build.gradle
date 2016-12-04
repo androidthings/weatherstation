@@ -29,8 +29,8 @@ android {
     }
     buildTypes {
         debug {
-            buildConfigField "String", "PROJECT_ID", '"YOUR CLOUD PROJECT NAME"'
-            buildConfigField "String", "PUBSUB_TOPIC", '"YOUR PUBSUB TOPIC NAME"'
+            buildConfigField "String", "PROJECT_ID", '"YOUR GOOGLE CLOUD PROJECT ID"'
+            buildConfigField "String", "PUBSUB_TOPIC", '"YOUR GOOGLE CLOUD PUBSUB TOPIC"'
         }
         release {
             initWith(buildTypes.debug)
@@ -45,12 +45,12 @@ dependencies {
     testCompile 'junit:junit:4.12'
 
     provided 'com.google.android.things:androidthings:0.1-preview'
+
     compile 'com.google.android.things.contrib:driver-button:0.1'
     compile 'com.google.android.things.contrib:driver-bmx280:0.1'
     compile 'com.google.android.things.contrib:driver-ht16k33:0.1'
     compile 'com.google.android.things.contrib:driver-apa102:0.1'
     compile 'com.google.android.things.contrib:driver-pwm-speaker:0.1'
-
 
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'
