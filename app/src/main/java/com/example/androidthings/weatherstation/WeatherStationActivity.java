@@ -20,19 +20,15 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.content.Context;
+
 import android.graphics.Color;
+
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.animation.LinearInterpolator;
@@ -45,30 +41,12 @@ import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay;
 import com.google.android.things.contrib.driver.pwmspeaker.Speaker;
 import com.google.android.things.pio.Gpio;
 import com.google.android.things.pio.PeripheralManagerService;
-import com.google.api.client.extensions.android.http.AndroidHttp;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.pubsub.Pubsub;
-import com.google.api.services.pubsub.PubsubScopes;
-import com.google.api.services.pubsub.model.PublishRequest;
-import com.google.api.services.pubsub.model.PubsubMessage;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.Collections;
 
 public class WeatherStationActivity extends Activity {
 
     private static final String TAG = WeatherStationActivity.class.getSimpleName();
-
-    private static final String PROJECT = "projects/" + BuildConfig.PROJECT_ID;
-    private static final String PUBSUB_TOPIC = PROJECT + "/topics/" + BuildConfig.PUBSUB_TOPIC;
-    private static final String PUBSUB_APP = "weatherstation";
 
     private enum DisplayMode {
         TEMPERATURE,
@@ -77,14 +55,8 @@ public class WeatherStationActivity extends Activity {
 
     private SensorManager mSensorManager;
 
-    private Pubsub mPubsub;
-    private HttpTransport mHttpTransport;
-    private HandlerThread mPubsubThread;
-    private Handler mPubsubHandler;
     private ButtonInputDriver mButtonInputDriver;
-
     private Bmx280SensorDriver mEnvironmentalSensorDriver;
-
     private AlphanumericDisplay mDisplay;
     private DisplayMode mDisplayMode = DisplayMode.TEMPERATURE;
 
@@ -101,6 +73,8 @@ public class WeatherStationActivity extends Activity {
     private float mLastTemperature;
     private float mLastPressure;
 
+    private PubsubPublisher mPubsubPublisher;
+
     // Callback used when we register the BMP280 sensor driver with the system's SensorManager.
     private SensorManager.DynamicSensorCallback mDynamicSensorCallback
             = new SensorManager.DynamicSensorCallback() {
@@ -114,10 +88,18 @@ public class WeatherStationActivity extends Activity {
                 // Our sensor is connected. Start receiving temperature data.
                 mSensorManager.registerListener(mTemperatureListener, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
+                if (mPubsubPublisher != null) {
+                    mSensorManager.registerListener(mPubsubPublisher.getTemperatureListener(), sensor,
+                            SensorManager.SENSOR_DELAY_NORMAL);
+                }
             } else if (sensor.getType() == Sensor.TYPE_PRESSURE) {
                 // Our sensor is connected. Start receiving pressure data.
                 mSensorManager.registerListener(mPressureListener, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
+                if (mPubsubPublisher != null) {
+                    mSensorManager.registerListener(mPubsubPublisher.getPressureListener(), sensor,
+                            SensorManager.SENSOR_DELAY_NORMAL);
+                }
             }
         }
 
@@ -132,7 +114,7 @@ public class WeatherStationActivity extends Activity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             mLastTemperature = event.values[0];
-            Log.d(TAG, "[temperature sensor] " + mLastTemperature);
+            Log.d(TAG, "sensor changed: " + mLastTemperature);
             if (mDisplayMode == DisplayMode.TEMPERATURE) {
                 updateDisplay(mLastTemperature);
             }
@@ -140,7 +122,7 @@ public class WeatherStationActivity extends Activity {
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            Log.d(TAG, "[onAccuracyChanged] " + accuracy);
+            Log.d(TAG, "accuracy changed: " + accuracy);
         }
     };
 
@@ -149,7 +131,7 @@ public class WeatherStationActivity extends Activity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             mLastPressure = event.values[0];
-            Log.d(TAG, "[pressure sensor] " + mLastPressure);
+            Log.d(TAG, "sensor changed: " + mLastPressure);
             if (mDisplayMode == DisplayMode.PRESSURE) {
                 updateDisplay(mLastPressure);
             }
@@ -158,61 +140,17 @@ public class WeatherStationActivity extends Activity {
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            Log.d(TAG, "[onAccuracyChanged] " + accuracy);
-        }
-    };
-
-    private Runnable mInitPubSubRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (mPubsub != null) {
-                return;
-            }
-            int credentialResourceId =
-                    getResources().getIdentifier("credentials", "raw", getPackageName());
-            if (credentialResourceId == 0) {
-                return;
-            }
-            InputStream jsonCredentials = getResources().openRawResource(credentialResourceId);
-            GoogleCredential credentials;
-            try {
-                credentials = GoogleCredential.fromStream(jsonCredentials).createScoped(
-                        Collections.singleton(PubsubScopes.PUBSUB));
-            } catch (IOException e) {
-                throw new RuntimeException("Error loading credentials", e);
-            } finally {
-                try {
-                    jsonCredentials.close();
-                } catch (IOException e) {
-                    Log.e(TAG, "[initPubSub] Error closing input stream", e);
-                }
-            }
-
-            Log.d(TAG, "credentials loaded");
-            mHttpTransport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-            mPubsub = new Pubsub.Builder(mHttpTransport, jsonFactory, credentials)
-                    .setApplicationName(PUBSUB_APP).build();
+            Log.d(TAG, "accuracy changed: " + accuracy);
         }
     };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "[onCreate] started weatherstation");
+        Log.d(TAG, "Started Weather Station");
         mSensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
 
-        mPubsubThread = new HandlerThread("pubsub");
-        mPubsubThread.start();
-        mPubsubHandler = new Handler(mPubsubThread.getLooper());
-
-        mPubsubHandler.post(mInitPubSubRunnable);
-
-        initPeripherals();
-    }
-
-    private void initPeripherals() {
-        // GPIO button that generates a space keypress (handled by onKeyUp method)
+        // GPIO button that generates 'A' keypresses (handled by onKeyUp method)
         try {
             mButtonInputDriver = new ButtonInputDriver(BoardDefaults.getButtonGpioPin(),
                         Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_A);
@@ -248,6 +186,7 @@ public class WeatherStationActivity extends Activity {
             throw new RuntimeException("Error initializing display", e);
         }
 
+        // SPI ledstrip
         try {
             mLedstrip = new Apa102(BoardDefaults.getSpiBus(), Apa102.Mode.BGR);
             mLedstrip.setBrightness(LEDSTRIP_BRIGHTNESS);
@@ -259,6 +198,7 @@ public class WeatherStationActivity extends Activity {
             mLedstrip = null; // Led strip is optional.
         }
 
+        // GPIO led
         try {
             PeripheralManagerService pioService = new PeripheralManagerService();
             mLed = pioService.openGpio(BoardDefaults.getLedGpioPin());
@@ -269,6 +209,7 @@ public class WeatherStationActivity extends Activity {
             throw new RuntimeException("Error initializing led", e);
         }
 
+        // PWM speaker
         try {
             mSpeaker = new Speaker(BoardDefaults.getSpeakerPwmPin());
             final ValueAnimator slide = ValueAnimator.ofFloat(440, 440*4);
@@ -306,6 +247,18 @@ public class WeatherStationActivity extends Activity {
         } catch (IOException e) {
             throw new RuntimeException("Error initializing speaker", e);
         }
+
+        // start Cloud PubSub Publisher if cloud credentials are present.
+        int credentialId = getResources().getIdentifier("credentials", "raw", getPackageName());
+        if (credentialId != 0) {
+            try {
+                mPubsubPublisher = new PubsubPublisher(this, "weatherstation",
+                        BuildConfig.PROJECT_ID, BuildConfig.PUBSUB_TOPIC, credentialId);
+                mPubsubPublisher.start();
+            } catch (IOException e) {
+                Log.e(TAG, "error creating pubsub publisher", e);
+            }
+        }
     }
 
     @Override
@@ -342,18 +295,13 @@ public class WeatherStationActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        try {
-            mHttpTransport.shutdown();
-        } catch (IOException e) {
-            Log.e(TAG, "[onDestroy] error closing http transport", e);
-        }
 
         // Clean up sensor registrations
         mSensorManager.unregisterListener(mTemperatureListener);
         mSensorManager.unregisterListener(mPressureListener);
         mSensorManager.unregisterDynamicSensorCallback(mDynamicSensorCallback);
 
-        // Clean up user drivers
+        // Clean up peripheral.
         if (mEnvironmentalSensorDriver != null) {
             try {
                 mEnvironmentalSensorDriver.close();
@@ -383,7 +331,6 @@ public class WeatherStationActivity extends Activity {
             }
         }
 
-
         if (mLedstrip != null) {
             try {
                 mLedstrip.write(new int[7]);
@@ -407,9 +354,13 @@ public class WeatherStationActivity extends Activity {
             }
         }
 
-        // clean up worker thread
-        mPubsubThread.quitSafely();
-        mPubsubHandler = null;
+        // clean up Cloud PubSub publisher.
+        if (mPubsubPublisher != null) {
+            mSensorManager.unregisterListener(mPubsubPublisher.getTemperatureListener());
+            mSensorManager.unregisterListener(mPubsubPublisher.getPressureListener());
+            mPubsubPublisher.close();
+            mPubsubPublisher = null;
+        }
     }
 
     private void updateDisplay(float value) {
@@ -427,11 +378,11 @@ public class WeatherStationActivity extends Activity {
             return;
         }
         float t = (pressure - BAROMETER_RANGE_LOW) / (BAROMETER_RANGE_HIGH - BAROMETER_RANGE_LOW);
-        int n = (int)Math.ceil(mRainbow.length * t);
+        int n = (int) Math.ceil(mRainbow.length * t);
         n = Math.max(0, Math.min(n, mRainbow.length));
         int[] colors = new int[mRainbow.length];
         for (int i = 0; i < n; i++) {
-            int ri = mRainbow.length-1-i;
+            int ri = mRainbow.length - 1 - i;
             colors[ri] = mRainbow[ri];
         }
         try {
@@ -439,57 +390,5 @@ public class WeatherStationActivity extends Activity {
         } catch (IOException e) {
             Log.e(TAG, "Error setting ledstrip", e);
         }
-    }
-
-    private void publishMessage() {
-        if (mPubsub == null) {
-            Log.e(TAG, "[publishMessage] Pubsub not created");
-            return;
-        }
-
-        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
-        if (activeNetwork == null || !activeNetwork.isConnectedOrConnecting()) {
-            Log.e(TAG, "[publishMessage] No active network");
-            return;
-        }
-
-        JSONObject messagePayload = createMessagePayload(mLastTemperature, mLastPressure);
-        if (messagePayload == null) {
-            Log.e(TAG, "[publishMessage] No message payload");
-            return;
-        }
-
-        Log.d(TAG, "[publishMessage] " + messagePayload);
-        PubsubMessage m = new PubsubMessage();
-        m.setData(Base64.encodeToString(messagePayload.toString().getBytes(), Base64.NO_WRAP));
-        PublishRequest request = new PublishRequest();
-        request.setMessages(Collections.singletonList(m));
-
-        try {
-            mPubsub.projects().topics().publish(PUBSUB_TOPIC, request).execute();
-        } catch (IOException e) {
-            Log.e(TAG, "Error publishing message", e);
-        }
-    }
-
-    private JSONObject createMessagePayload(float temperature, float pressure) {
-        try {
-            // Dataflow-pipeline worker expects them all to be strings.
-            JSONObject sensorData = new JSONObject();
-            sensorData.put("temperature", String.valueOf(temperature));
-            sensorData.put("pressure", String.valueOf(pressure));
-
-            JSONObject messagePayload = new JSONObject();
-            messagePayload.put("deviceId", Build.DEVICE);
-            messagePayload.put("channel", "pubsub");
-            messagePayload.put("timestamp", System.currentTimeMillis());
-            messagePayload.put("data", sensorData);
-            return messagePayload;
-        } catch (JSONException e) {
-            Log.e(TAG, "[createMessagePayload] error creating message payload", e);
-        }
-        return null;
     }
 }

@@ -33,7 +33,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "BCM21";
             case DEVICE_NXP:
-                return "GPIO_25";
+                return "GPIO4_IO20";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -46,7 +46,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "BCM6";
             case DEVICE_NXP:
-                return "GPIO_26";
+                return "GPIO4_IO21";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -72,7 +72,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "SPI0.0";
             case DEVICE_NXP:
-                return "SPI2";
+                return "SPI3_0";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
