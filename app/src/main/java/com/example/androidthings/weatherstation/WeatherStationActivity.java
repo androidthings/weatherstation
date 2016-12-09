@@ -20,9 +20,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-
 import android.graphics.Color;
-
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -80,11 +78,7 @@ public class WeatherStationActivity extends Activity {
             = new SensorManager.DynamicSensorCallback() {
         @Override
         public void onDynamicSensorConnected(Sensor sensor) {
-            // TODO TemperatureSensorDriver declares its type as TYPE_AMBIENT_TEMPERATURE, but
-            // for some reason the sensor's type says TYPE_TEMPERATURE. Possibly a bug?
-            //noinspection deprecation
-            if (sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE
-                    || sensor.getType() == Sensor.TYPE_TEMPERATURE) {
+            if (sensor.getType() == Sensor.TYPE_AMBIENT_TEMPERATURE) {
                 // Our sensor is connected. Start receiving temperature data.
                 mSensorManager.registerListener(mTemperatureListener, sensor,
                         SensorManager.SENSOR_DELAY_NORMAL);
