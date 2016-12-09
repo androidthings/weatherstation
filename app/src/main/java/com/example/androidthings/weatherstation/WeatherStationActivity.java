@@ -174,7 +174,7 @@ public class WeatherStationActivity extends Activity {
             mEnvironmentalSensorDriver.registerPressureSensor();
             Log.d(TAG, "Initialized I2C BMP280");
         } catch (IOException e) {
-            throw new RuntimeException("Error initializing BMP280", e);
+            throw new RuntimeException("Error initializing BMP280"+ e);
         }
 
         try {
@@ -183,7 +183,9 @@ public class WeatherStationActivity extends Activity {
             mDisplay.clear();
             Log.d(TAG, "Initialized I2C Display");
         } catch (IOException e) {
-            throw new RuntimeException("Error initializing display", e);
+            Log.e(TAG, "Error initializing display", e);
+            Log.d(TAG, "Display disabled");
+            mDisplay = null;
         }
 
         // SPI ledstrip

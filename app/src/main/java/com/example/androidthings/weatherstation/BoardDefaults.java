@@ -18,18 +18,24 @@ package com.example.androidthings.weatherstation;
 
 import android.os.Build;
 
+import com.google.android.things.pio.PeripheralManagerService;
+
+import java.util.List;
+
 @SuppressWarnings("WeakerAccess")
 public final class BoardDefaults {
+    private static final String DEVICE_EDISON_ARDUINO = "edison_arduino";
     private static final String DEVICE_EDISON = "edison";
     private static final String DEVICE_RPI3 = "rpi3";
     private static final String DEVICE_NXP = "imx6ul";
-
-    private BoardDefaults() { /*no instance*/ }
+    private static String sBoardVariant = "";
 
     public static String getButtonGpioPin() {
-        switch (Build.DEVICE) {
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
+                return "IO12";
             case DEVICE_EDISON:
-                return "IO13";
+                return "GP44";
             case DEVICE_RPI3:
                 return "BCM21";
             case DEVICE_NXP:
@@ -40,9 +46,11 @@ public final class BoardDefaults {
     }
 
     public static String getLedGpioPin() {
-        switch (Build.DEVICE) {
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
+                return "IO13";
             case DEVICE_EDISON:
-                return "IO12";
+                return "GP45";
             case DEVICE_RPI3:
                 return "BCM6";
             case DEVICE_NXP:
@@ -53,9 +61,11 @@ public final class BoardDefaults {
     }
 
     public static String getI2cBus() {
-        switch (Build.DEVICE) {
-            case DEVICE_EDISON:
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
                 return "I2C6";
+            case DEVICE_EDISON:
+                return "I2C1";
             case DEVICE_RPI3:
                 return "I2C1";
             case DEVICE_NXP:
@@ -66,9 +76,11 @@ public final class BoardDefaults {
     }
 
     public static String getSpiBus() {
-        switch (Build.DEVICE) {
-            case DEVICE_EDISON:
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
                 return "SPI1";
+            case DEVICE_EDISON:
+                return "SPI2";
             case DEVICE_RPI3:
                 return "SPI0.0";
             case DEVICE_NXP:
@@ -79,9 +91,11 @@ public final class BoardDefaults {
     }
 
     public static String getSpeakerPwmPin() {
-        switch (Build.DEVICE) {
-            case DEVICE_EDISON:
+        switch (getBoardVariant()) {
+            case DEVICE_EDISON_ARDUINO:
                 return "IO3";
+            case DEVICE_EDISON:
+                return "GP13";
             case DEVICE_RPI3:
                 return "PWM1";
             case DEVICE_NXP:
@@ -89,5 +103,25 @@ public final class BoardDefaults {
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
+    }
+
+    private static String getBoardVariant() {
+        if (!sBoardVariant.isEmpty()) {
+            return sBoardVariant;
+        }
+        sBoardVariant = Build.DEVICE;
+        // For the edison check the pin prefix
+        // to always return Edison Breakout pin name when applicable.
+        if (sBoardVariant.equals(DEVICE_EDISON)) {
+            PeripheralManagerService pioService = new PeripheralManagerService();
+            List<String> gpioList = pioService.getGpioList();
+            if (gpioList.size() != 0) {
+                String pin = gpioList.get(0);
+                if (pin.startsWith("IO")) {
+                    sBoardVariant = DEVICE_EDISON_ARDUINO;
+                }
+            }
+        }
+        return sBoardVariant;
     }
 }
