@@ -30,6 +30,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.animation.LinearInterpolator;
+import android.widget.ImageView;
 
 import com.google.android.things.contrib.driver.apa102.Apa102;
 import com.google.android.things.contrib.driver.bmx280.Bmx280SensorDriver;
@@ -63,8 +64,11 @@ public class WeatherStationActivity extends Activity {
     private static final int LEDSTRIP_BRIGHTNESS = 1;
     private static final float BAROMETER_RANGE_LOW = 965.f;
     private static final float BAROMETER_RANGE_HIGH = 1035.f;
+    private static final float BAROMETER_RANGE_SUNNY = 1010.f;
+    private static final float BAROMETER_RANGE_RAINY = 990.f;
 
     private Gpio mLed;
+
     private int SPEAKER_READY_DELAY_MS = 300;
     private Speaker mSpeaker;
 
@@ -72,6 +76,7 @@ public class WeatherStationActivity extends Activity {
     private float mLastPressure;
 
     private PubsubPublisher mPubsubPublisher;
+    private ImageView mImageView;
 
     // Callback used when we register the BMP280 sensor driver with the system's SensorManager.
     private SensorManager.DynamicSensorCallback mDynamicSensorCallback
@@ -142,12 +147,16 @@ public class WeatherStationActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "Started Weather Station");
+
+        setContentView(R.layout.activity_main);
+        mImageView = (ImageView) findViewById(R.id.imageView);
+
         mSensorManager = ((SensorManager) getSystemService(SENSOR_SERVICE));
 
         // GPIO button that generates 'A' keypresses (handled by onKeyUp method)
         try {
             mButtonInputDriver = new ButtonInputDriver(BoardDefaults.getButtonGpioPin(),
-                        Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_A);
+                    Button.LogicState.PRESSED_WHEN_LOW, KeyEvent.KEYCODE_A);
             mButtonInputDriver.register();
             Log.d(TAG, "Initialized GPIO Button that generates a keypress with KEYCODE_A");
         } catch (IOException e) {
@@ -168,7 +177,7 @@ public class WeatherStationActivity extends Activity {
             mEnvironmentalSensorDriver.registerPressureSensor();
             Log.d(TAG, "Initialized I2C BMP280");
         } catch (IOException e) {
-            throw new RuntimeException("Error initializing BMP280"+ e);
+            throw new RuntimeException("Error initializing BMP280", e);
         }
 
         try {
@@ -208,7 +217,7 @@ public class WeatherStationActivity extends Activity {
         // PWM speaker
         try {
             mSpeaker = new Speaker(BoardDefaults.getSpeakerPwmPin());
-            final ValueAnimator slide = ValueAnimator.ofFloat(440, 440*4);
+            final ValueAnimator slide = ValueAnimator.ofFloat(440, 440 * 4);
             slide.setDuration(50);
             slide.setRepeatCount(5);
             slide.setInterpolator(new LinearInterpolator());
@@ -235,11 +244,11 @@ public class WeatherStationActivity extends Activity {
             });
             Handler handler = new Handler(getMainLooper());
             handler.postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        slide.start();
-                                    }
-                                }, SPEAKER_READY_DELAY_MS);
+                @Override
+                public void run() {
+                    slide.start();
+                }
+            }, SPEAKER_READY_DELAY_MS);
         } catch (IOException e) {
             throw new RuntimeException("Error initializing speaker", e);
         }
@@ -370,6 +379,15 @@ public class WeatherStationActivity extends Activity {
     }
 
     private void updateBarometer(float pressure) {
+        // Update UI.
+        if (pressure > BAROMETER_RANGE_SUNNY) {
+            mImageView.setImageResource(R.drawable.ic_sunny);
+        } else if (pressure < BAROMETER_RANGE_RAINY) {
+            mImageView.setImageResource(R.drawable.ic_rainy);
+        } else {
+            mImageView.setImageResource(R.drawable.ic_cloudy);
+        }
+        // Update led strip.
         if (mLedstrip == null) {
             return;
         }
