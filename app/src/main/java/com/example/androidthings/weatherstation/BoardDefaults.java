@@ -19,7 +19,6 @@ package com.example.androidthings.weatherstation;
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
-import android.support.annotation.StringDef;
 
 import com.google.android.things.pio.PeripheralManagerService;
 
