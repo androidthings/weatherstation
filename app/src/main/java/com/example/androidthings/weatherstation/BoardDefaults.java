@@ -17,10 +17,16 @@
 package com.example.androidthings.weatherstation;
 
 import android.os.Build;
+import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
+import android.support.annotation.StringDef;
 
 import com.google.android.things.pio.PeripheralManagerService;
 
+import java.lang.annotation.Retention;
 import java.util.List;
+
+import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 @SuppressWarnings("WeakerAccess")
 public final class BoardDefaults {
@@ -30,14 +36,51 @@ public final class BoardDefaults {
     private static final String DEVICE_NXP = "imx6ul";
     private static String sBoardVariant = "";
 
-    public static String getButtonGpioPin() {
+    @Retention(SOURCE)
+    @IntDef({BUTTON_A, BUTTON_B, BUTTON_C})
+    public @interface Button {
+    }
+    public static final int BUTTON_A = 0;
+    public static final int BUTTON_B = 1;
+    public static final int BUTTON_C = 2;
+
+    private static final String RPI_BUTTON_A = "BCM21";
+    private static final String RPI_BUTTON_B = "BCM20";
+    private static final String RPI_BUTTON_C = "BCM16";
+
+    @Retention(SOURCE)
+    @IntDef({LED_RED, LED_GREEN, LED_BLUE})
+    public @interface Led {
+    }
+    public static final int LED_RED = 0;
+    public static final int LED_GREEN = 1;
+    public static final int LED_BLUE = 2;
+
+    private static final String RPI_LED_RED = "BCM6";
+    private static final String RPI_LED_GREEN = "BCM19";
+    private static final String RPI_LED_BLUE = "BCM26";
+
+
+    public static String getButtonGpioPin(@Button int button) {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
                 return "IO12";
             case DEVICE_EDISON:
                 return "GP44";
-            case DEVICE_RPI3:
-                return "BCM21";
+            case DEVICE_RPI3: {
+                switch (button) {
+                    case BUTTON_A:
+                        return RPI_BUTTON_A;
+
+                    case BUTTON_B:
+                        return RPI_BUTTON_B;
+
+                    case BUTTON_C:
+                        return RPI_BUTTON_C;
+
+                }
+            }
+
             case DEVICE_NXP:
                 return "GPIO4_IO20";
             default:
@@ -45,14 +88,28 @@ public final class BoardDefaults {
         }
     }
 
-    public static String getLedGpioPin() {
+    @NonNull
+    public static String getButtonGpioPin() {
+        return getButtonGpioPin(BUTTON_A);
+    }
+
+    @NonNull
+    public static String getLedGpioPin(@Led int led) {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
                 return "IO13";
             case DEVICE_EDISON:
                 return "GP45";
-            case DEVICE_RPI3:
-                return "BCM6";
+            case DEVICE_RPI3: {
+                switch (led) {
+                    case LED_BLUE:
+                        return RPI_LED_BLUE;
+                    case LED_GREEN:
+                        return RPI_LED_GREEN;
+                    case LED_RED:
+                        return RPI_LED_RED;
+                }
+            }
             case DEVICE_NXP:
                 return "GPIO4_IO21";
             default:
@@ -60,6 +117,11 @@ public final class BoardDefaults {
         }
     }
 
+    public static String getLedGpioPin() {
+        return getLedGpioPin(LED_RED);
+    }
+
+    @NonNull
     public static String getI2cBus() {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
@@ -75,6 +137,7 @@ public final class BoardDefaults {
         }
     }
 
+    @NonNull
     public static String getSpiBus() {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
@@ -90,6 +153,7 @@ public final class BoardDefaults {
         }
     }
 
+    @NonNull
     public static String getSpeakerPwmPin() {
         switch (getBoardVariant()) {
             case DEVICE_EDISON_ARDUINO:
