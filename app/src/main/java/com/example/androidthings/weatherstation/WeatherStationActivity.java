@@ -235,11 +235,11 @@ public class WeatherStationActivity extends Activity {
             });
             Handler handler = new Handler(getMainLooper());
             handler.postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        slide.start();
-                                    }
-                                }, SPEAKER_READY_DELAY_MS);
+                @Override
+                public void run() {
+                    slide.start();
+                }
+            }, SPEAKER_READY_DELAY_MS);
         } catch (IOException e) {
             throw new RuntimeException("Error initializing speaker", e);
         }
