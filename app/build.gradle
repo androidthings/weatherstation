@@ -17,13 +17,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion '24.0.3'
+    compileSdkVersion 25
+    buildToolsVersion '25.0.2'
 
     defaultConfig {
         applicationId "com.example.androidthings.weatherstation"
         minSdkVersion 24
-        targetSdkVersion 24
+        targetSdkVersion 25
         versionCode 1
         versionName "1.0"
     }
@@ -46,10 +46,10 @@ dependencies {
 
     provided 'com.google.android.things:androidthings:0.2-devpreview'
 
-    compile 'com.google.android.things.contrib:driver-button:0.1'
+    compile 'com.google.android.things.contrib:driver-button:0.2'
     compile 'com.google.android.things.contrib:driver-bmx280:0.1'
-    compile 'com.google.android.things.contrib:driver-ht16k33:0.1'
-    compile 'com.google.android.things.contrib:driver-apa102:0.1'
+    compile 'com.google.android.things.contrib:driver-ht16k33:0.2'
+    compile 'com.google.android.things.contrib:driver-apa102:0.2'
     compile 'com.google.android.things.contrib:driver-pwmspeaker:0.1'
 
     compile('com.google.api-client:google-api-client-android:1.22.0') {
