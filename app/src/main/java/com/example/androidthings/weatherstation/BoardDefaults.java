@@ -26,8 +26,10 @@ import java.util.List;
 public final class BoardDefaults {
     private static final String DEVICE_EDISON_ARDUINO = "edison_arduino";
     private static final String DEVICE_EDISON = "edison";
+    private static final String DEVICE_JOULE = "joule";
     private static final String DEVICE_RPI3 = "rpi3";
-    private static final String DEVICE_NXP = "imx6ul";
+    private static final String DEVICE_PICO = "imx6ul_pico";
+    private static final String DEVICE_VVDN = "imx6ul_iopb";
     private static String sBoardVariant = "";
 
     public static String getButtonGpioPin() {
@@ -36,10 +38,14 @@ public final class BoardDefaults {
                 return "IO12";
             case DEVICE_EDISON:
                 return "GP44";
+            case DEVICE_JOULE:
+                return "FLASH_TRIGGER";
             case DEVICE_RPI3:
                 return "BCM21";
-            case DEVICE_NXP:
+            case DEVICE_PICO:
                 return "GPIO4_IO20";
+            case DEVICE_VVDN:
+                return "GPIO3_IO01";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -51,10 +57,14 @@ public final class BoardDefaults {
                 return "IO13";
             case DEVICE_EDISON:
                 return "GP45";
+            case DEVICE_JOULE:
+                return "LED100";
             case DEVICE_RPI3:
                 return "BCM6";
-            case DEVICE_NXP:
+            case DEVICE_PICO:
                 return "GPIO4_IO21";
+            case DEVICE_VVDN:
+                return "GPIO3_IO06";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -66,10 +76,14 @@ public final class BoardDefaults {
                 return "I2C6";
             case DEVICE_EDISON:
                 return "I2C1";
+            case DEVICE_JOULE:
+                return "I2C0";
             case DEVICE_RPI3:
                 return "I2C1";
-            case DEVICE_NXP:
+            case DEVICE_PICO:
                 return "I2C2";
+            case DEVICE_VVDN:
+                return "I2C4";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -81,10 +95,14 @@ public final class BoardDefaults {
                 return "SPI1";
             case DEVICE_EDISON:
                 return "SPI2";
+            case DEVICE_JOULE:
+                return "SPI0.0";
             case DEVICE_RPI3:
                 return "SPI0.0";
-            case DEVICE_NXP:
-                return "SPI3_0";
+            case DEVICE_PICO:
+                return "SPI3.0";
+            case DEVICE_VVDN:
+                return "SPI1.0";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
@@ -96,10 +114,14 @@ public final class BoardDefaults {
                 return "IO3";
             case DEVICE_EDISON:
                 return "GP13";
+            case DEVICE_JOULE:
+                return "PWM_0";
             case DEVICE_RPI3:
                 return "PWM1";
-            case DEVICE_NXP:
+            case DEVICE_PICO:
                 return "PWM7";
+            case DEVICE_VVDN:
+                return "PWM3";
             default:
                 throw new IllegalArgumentException("Unknown device: " + Build.DEVICE);
         }
