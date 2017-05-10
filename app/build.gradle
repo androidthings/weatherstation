@@ -44,13 +44,13 @@ android {
 dependencies {
     testCompile 'junit:junit:4.12'
 
-    provided 'com.google.android.things:androidthings:0.3-devpreview'
+    provided 'com.google.android.things:androidthings:0.4-devpreview'
 
-    compile 'com.google.android.things.contrib:driver-button:0.2'
-    compile 'com.google.android.things.contrib:driver-bmx280:0.1'
-    compile 'com.google.android.things.contrib:driver-ht16k33:0.2'
-    compile 'com.google.android.things.contrib:driver-apa102:0.2'
-    compile 'com.google.android.things.contrib:driver-pwmspeaker:0.1'
+    compile 'com.google.android.things.contrib:driver-button:0.3'
+    compile 'com.google.android.things.contrib:driver-bmx280:0.2'
+    compile 'com.google.android.things.contrib:driver-ht16k33:0.3'
+    compile 'com.google.android.things.contrib:driver-apa102:0.3'
+    compile 'com.google.android.things.contrib:driver-pwmspeaker:0.2'
 
     compile('com.google.api-client:google-api-client-android:1.22.0') {
         exclude group: 'org.apache.httpcomponents'
