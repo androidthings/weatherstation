@@ -15,7 +15,7 @@ build a connected Weather Station.
 - Android Studio 2.2+
 - [Rainbow Hat for Android Things](https://shop.pimoroni.com/products/rainbow-hat-for-android-things) or the following individual components:
     - 1 [bmp280 temperature sensor](https://www.adafruit.com/product/2651)
-    - 1 [segment display with I2C backpack](https://www.adafruit.com/product/1270)
+    - 1 [segment display with I2C backpack](https://www.adafruit.com/product/879)
     - 1 push button
     - 1 resistor
     - jumper wires
