@@ -27,6 +27,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.animation.LinearInterpolator;
@@ -77,6 +78,31 @@ public class WeatherStationActivity extends Activity {
 
     private PubsubPublisher mPubsubPublisher;
     private ImageView mImageView;
+
+    private static final int MSG_UPDATE_BAROMETER_UI = 1;
+    private final Handler mHandler = new Handler() {
+        private int mBarometerImage = -1;
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_UPDATE_BAROMETER_UI:
+                    int img;
+                    if (mLastPressure > BAROMETER_RANGE_SUNNY) {
+                        img = R.drawable.ic_sunny;
+                    } else if (mLastPressure < BAROMETER_RANGE_RAINY) {
+                        img = R.drawable.ic_rainy;
+                    } else {
+                        img = R.drawable.ic_cloudy;
+                    }
+                    if (img != mBarometerImage) {
+                        mImageView.setImageResource(img);
+                        mBarometerImage = img;
+                    }
+                    break;
+            }
+        }
+    };
 
     // Callback used when we register the BMP280 sensor driver with the system's SensorManager.
     private SensorManager.DynamicSensorCallback mDynamicSensorCallback
@@ -380,12 +406,8 @@ public class WeatherStationActivity extends Activity {
 
     private void updateBarometer(float pressure) {
         // Update UI.
-        if (pressure > BAROMETER_RANGE_SUNNY) {
-            mImageView.setImageResource(R.drawable.ic_sunny);
-        } else if (pressure < BAROMETER_RANGE_RAINY) {
-            mImageView.setImageResource(R.drawable.ic_rainy);
-        } else {
-            mImageView.setImageResource(R.drawable.ic_cloudy);
+        if (!mHandler.hasMessages(MSG_UPDATE_BAROMETER_UI)) {
+            mHandler.sendEmptyMessageDelayed(MSG_UPDATE_BAROMETER_UI, 100);
         }
         // Update led strip.
         if (mLedstrip == null) {
