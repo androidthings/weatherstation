@@ -44,7 +44,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "BCM21";
             case DEVICE_IMX6UL_PICO:
-                return "GPIO4_IO20";
+                return "GPIO2_IO03";
             case DEVICE_IMX6UL_VVDN:
                 return "GPIO3_IO01";
             case DEVICE_IMX7D_PICO:
@@ -65,7 +65,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "BCM6";
             case DEVICE_IMX6UL_PICO:
-                return "GPIO4_IO21";
+                return "GPIO4_IO22";
             case DEVICE_IMX6UL_VVDN:
                 return "GPIO3_IO06";
             case DEVICE_IMX7D_PICO:
@@ -128,7 +128,7 @@ public final class BoardDefaults {
             case DEVICE_RPI3:
                 return "PWM1";
             case DEVICE_IMX6UL_PICO:
-                return "PWM7";
+                return "PWM8";
             case DEVICE_IMX6UL_VVDN:
                 return "PWM3";
             case DEVICE_IMX7D_PICO:
