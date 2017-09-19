@@ -364,8 +364,8 @@ public class WeatherStationActivity extends Activity {
 
         if (mLedstrip != null) {
             try {
-                mLedstrip.write(new int[7]);
                 mLedstrip.setBrightness(0);
+                mLedstrip.write(new int[7]);
                 mLedstrip.close();
             } catch (IOException e) {
                 Log.e(TAG, "Error disabling ledstrip", e);
