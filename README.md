@@ -41,13 +41,13 @@ If you have everything set up correctly:
 
 ## Google Cloud Platform configuration (optional)
 
-0. Go to your project in the [Google Cloud Platform console](https://console.cloud.google.com/)
-0. Under *API Manager*, enable the following APIs: Cloud Pub/Sub
-0. Under *IAM & Admin*, create a new Service Account, provision a new private key and save the generated json credentials.
-0. Under *Pub/Sub*: create a new topic and in the *Permissions* add the service account created in the previous step with the role *Pub/Sub Publisher*.
-0. Under *Pub/Sub*: create a new *Pull subscription* on your new topic.
-0. Import the project into Android Studio. Add a file named `credentials.json` inside `app/src/main/res/raw/` with the contents of the credentials you downloaded in the previous steps.
-0. In `app/build.gradle`, replace the `buildConfigField` values with values from your project setup.
+1. Go to your project in the [Google Cloud Platform console](https://console.cloud.google.com/)
+1. Under *API Manager*, enable the following APIs: Cloud Pub/Sub
+1. Under *IAM & Admin*, create a new Service Account, provision a new private key and save the generated json credentials.
+1. Under *Pub/Sub*: create a new topic and in the *Permissions* add the service account created in the previous step with the role *Pub/Sub Publisher*.
+1. Under *Pub/Sub*: create a new *Pull subscription* on your new topic.
+1. Import the project into Android Studio. Add a file named `credentials.json` inside `app/src/main/res/raw/` with the contents of the credentials you downloaded in the previous steps.
+1. In `app/build.gradle`, replace the `buildConfigField` values with values from your project setup.
 
 After running the sample, you can check that your data is ingested in Google Cloud Pub/Sub by running the following command:
 ```
