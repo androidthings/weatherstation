@@ -2,6 +2,12 @@
 
 This sample shows integration of multiple Android Things peripheral to build a connected Weather Station.
 
+## Screenshots
+
+![Weather Station sample demo][demo-gif]
+
+[(Watch the demo on YouTube)][demo-yt]
+
 ## Pre-requisites
 
 - Android Things compatible board
@@ -83,3 +89,6 @@ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
 License for the specific language governing permissions and limitations under
 the License.
+
+[demo-yt]: https://www.youtube.com/watch?v=FcdwfKehX_0&list=PLWz5rJ2EKKc-GjpNkFe9q3DhE2voJscDT&index=14
+[demo-gif]: demo1.gif
