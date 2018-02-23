@@ -40,7 +40,7 @@ import com.google.android.things.contrib.driver.button.ButtonInputDriver;
 import com.google.android.things.contrib.driver.ht16k33.AlphanumericDisplay;
 import com.google.android.things.contrib.driver.pwmspeaker.Speaker;
 import com.google.android.things.pio.Gpio;
-import com.google.android.things.pio.PeripheralManagerService;
+import com.google.android.things.pio.PeripheralManager;
 
 import java.io.IOException;
 
@@ -231,8 +231,8 @@ public class WeatherStationActivity extends Activity {
 
         // GPIO led
         try {
-            PeripheralManagerService pioService = new PeripheralManagerService();
-            mLed = pioService.openGpio(BoardDefaults.getLedGpioPin());
+            PeripheralManager pioManager = PeripheralManager.getInstance();
+            mLed = pioManager.openGpio(BoardDefaults.getLedGpioPin());
             mLed.setEdgeTriggerType(Gpio.EDGE_NONE);
             mLed.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
             mLed.setActiveType(Gpio.ACTIVE_HIGH);
