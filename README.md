@@ -71,6 +71,24 @@ Now your weather sensor data is continuously being published to [Google Cloud Pu
 - create some weather visualization with [Google Cloud Datalab](https://cloud.google.com/datalab/)
 - build weather prediction model with [Google Cloud Machine Learning](https://cloud.google.com/ml/)
 
+## Enable auto-launch behavior
+
+This sample app is currently configured to launch only when deployed from your
+development machine. To enable the main activity to launch automatically on boot,
+add the following `intent-filter` to the app's manifest file:
+
+```xml
+<activity ...>
+
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.HOME"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+    </intent-filter>
+
+</activity>
+```
+
 ## License
 
 Copyright 2016 The Android Open Source Project, Inc.
