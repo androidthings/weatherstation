@@ -1,6 +1,7 @@
-# Android Things Weather Station sample
+# Weather Station
 
-This sample shows integration of multiple Android Things peripheral to build a connected Weather Station.
+This sample integrates multiple Android Things peripheral drivers together to
+build a connected Weather Station.
 
 ## Screenshots
 
