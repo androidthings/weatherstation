@@ -44,7 +44,7 @@ If you have everything set up correctly:
 - If the button is pressed, the display will show the current pressure.
 - If a Piezo Buzzer is connected, it will plays a funny sound on startup.
 - If a APA102 RGB Led strip is connected, it will display a rainbow of 7 pixels indicating the current pressure.
-- If a Google Cloud Platform project is configured (see instruction below), it will publish the sensor data to Google Cloug PubSub.
+- If a Google Cloud Platform project is configured (see instruction below), it will publish the sensor data to Google Cloud PubSub.
 
 ## Google Cloud Platform configuration (optional)
 
